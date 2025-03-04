@@ -94,7 +94,7 @@ class Solver
 
     // Core module types - required for all problems.
     using particle_type = ParticleType;
-    using integrator_type = Integrator<exec_space>;
+    using integrator_type = Yoshida<exec_space>;
     using force_model_type = ForceModelType;
     using force_type = Force<memory_space, force_model_type>;
     using comm_type = Comm<particle_type, typename force_model_type::base_model,
@@ -277,8 +277,10 @@ class Solver
         {
             _step_timer.start();
 
-            // Integrate - velocity Verlet first half.
-            integrator->initialHalfStep( *particles );
+	 	/******* Stage 1 *******/
+
+            // Integrate - Yoshhida stage 1 update for displacement
+            integrator->stageOneDisplacement( *particles );
 
             // Update ghost particles.
             comm->gatherDisplacement();
@@ -301,7 +303,9 @@ class Solver
                 comm->gatherTemperature();
 
             // Compute internal forces.
-            updateForce();
+            updateForceNoBreaking();
+
+	    
 
             if constexpr ( is_contact<contact_model_type>::value )
                 computeForce( *contact, *particles, neigh_iter_tag{}, false );
@@ -310,8 +314,135 @@ class Solver
             if ( boundary_condition.forceUpdate() )
                 boundary_condition.apply( exec_space(), *particles, step * dt );
 
-            // Integrate - velocity Verlet second half.
-            integrator->finalHalfStep( *particles );
+            // Integrate - Yoshhida stage 1 update for velcoity
+            integrator->stageOneVel( *particles );
+
+
+		/******* Stage 2 *******/
+
+            // Integrate - Yoshhida stage 2 update for displacement
+            integrator->stageTwoDisplacement( *particles );
+
+            // Update ghost particles.
+            comm->gatherDisplacement();
+
+            if constexpr ( is_heat_transfer<
+                               typename force_model_type::thermal_type>::value )
+            {
+                if ( step % thermal_subcycle_steps == 0 )
+                    computeHeatTransfer( *heat_transfer, *particles,
+                                         neigh_iter_tag{},
+                                         thermal_subcycle_steps * dt );
+            }
+
+            // Add non-force boundary condition.
+            if ( !boundary_condition.forceUpdate() )
+                boundary_condition.apply( exec_space(), *particles, step * dt );
+
+            if constexpr ( is_temperature_dependent<
+                               typename force_model_type::thermal_type>::value )
+                comm->gatherTemperature();
+
+            // Compute internal forces.
+            updateForceNoBreaking();
+
+	    
+            if constexpr ( is_contact<contact_model_type>::value )
+                computeForce( *contact, *particles, neigh_iter_tag{}, false );
+
+            // Add force boundary condition.
+            if ( boundary_condition.forceUpdate() )
+                boundary_condition.apply( exec_space(), *particles, step * dt );
+
+            // Integrate - Yoshhida stage 2 update for velcoity
+            integrator->stageTwoVel( *particles );	
+
+
+	
+		/******* Stage 3 *******/
+
+            // Integrate - Yoshhida stage 3 update for displacement
+            integrator->stageThreeDisplacement( *particles );
+
+            // Update ghost particles.
+            comm->gatherDisplacement();
+
+            if constexpr ( is_heat_transfer<
+                               typename force_model_type::thermal_type>::value )
+            {
+                if ( step % thermal_subcycle_steps == 0 )
+                    computeHeatTransfer( *heat_transfer, *particles,
+                                         neigh_iter_tag{},
+                                         thermal_subcycle_steps * dt );
+            }
+
+            // Add non-force boundary condition.
+            if ( !boundary_condition.forceUpdate() )
+                boundary_condition.apply( exec_space(), *particles, step * dt );
+
+            if constexpr ( is_temperature_dependent<
+                               typename force_model_type::thermal_type>::value )
+                comm->gatherTemperature();
+
+            // Compute internal forces.
+            updateForceNoBreaking();
+
+	    
+
+            if constexpr ( is_contact<contact_model_type>::value )
+                computeForce( *contact, *particles, neigh_iter_tag{}, false );
+
+            // Add force boundary condition.
+            if ( boundary_condition.forceUpdate() )
+                boundary_condition.apply( exec_space(), *particles, step * dt );
+
+            // Integrate - Yoshhida stage 3 update for velcoity
+            integrator->stageThreeVel( *particles );
+
+
+
+		/******* Stage 4 *******/
+
+            // Integrate - Yoshhida stage 4 update for displacement
+            integrator->stageFourDisplacement( *particles );
+
+            // Update ghost particles.
+            comm->gatherDisplacement();
+
+            if constexpr ( is_heat_transfer<
+                               typename force_model_type::thermal_type>::value )
+            {
+                if ( step % thermal_subcycle_steps == 0 )
+                    computeHeatTransfer( *heat_transfer, *particles,
+                                         neigh_iter_tag{},
+                                         thermal_subcycle_steps * dt );
+            }
+
+            // Add non-force boundary condition.
+            if ( !boundary_condition.forceUpdate() )
+                boundary_condition.apply( exec_space(), *particles, step * dt );
+
+            if constexpr ( is_temperature_dependent<
+                               typename force_model_type::thermal_type>::value )
+                comm->gatherTemperature();
+
+            // Compute internal forces. -- Break Bonds
+            updateForce();
+
+	    
+
+            if constexpr ( is_contact<contact_model_type>::value )
+                computeForce( *contact, *particles, neigh_iter_tag{}, false );
+
+            // Add force boundary condition.
+            if ( boundary_condition.forceUpdate() )
+                boundary_condition.apply( exec_space(), *particles, step * dt );
+
+            // Integrate - Yoshhida stage 4 update for velcoity
+            integrator->stageFourVel( *particles );		
+
+
+
 
             output( step );
         }
@@ -329,13 +460,82 @@ class Solver
         {
             _step_timer.start();
 
-            // Integrate - velocity Verlet first half.
-            integrator->initialHalfStep( *particles );
+           /******* Stage 1 *******/
+
+            // Integrate - Yoshhida stage 1 update for displacement
+            integrator->stageOneDisplacement( *particles );
 
             // Update ghost particles.
             comm->gatherDisplacement();
 
             // Compute internal forces.
+            updateForceNoBreaking();
+
+            if constexpr ( is_contact<contact_model_type>::value )
+                computeForce( *contact, *particles, neigh_iter_tag{}, false );
+
+            if constexpr ( is_temperature_dependent<
+                               typename force_model_type::thermal_type>::value )
+                comm->gatherTemperature();
+
+            // Integrate - Yoshhida stage 1 update for velcoity
+            integrator->stageOneVel( *particles );
+
+
+		/******* Stage 2 *******/
+
+            // Integrate - Yoshhida stage 2 update for displacement
+            integrator->stageTwoDisplacement( *particles );
+
+            // Update ghost particles.
+            comm->gatherDisplacement();
+
+            // Compute internal forces.
+            updateForceNoBreaking();
+
+            if constexpr ( is_contact<contact_model_type>::value )
+                computeForce( *contact, *particles, neigh_iter_tag{}, false );
+
+            if constexpr ( is_temperature_dependent<
+                               typename force_model_type::thermal_type>::value )
+                comm->gatherTemperature();
+
+            // Integrate - Yoshhida stage 2 update for velcoity
+            integrator->stageTwoVel( *particles );
+
+
+
+		/******* Stage 3 *******/
+
+            // Integrate - Yoshhida stage 3 update for displacement
+            integrator->stageThreeDisplacement( *particles );
+
+            // Update ghost particles.
+            comm->gatherDisplacement();
+
+            // Compute internal forces.
+            updateForceNoBreaking();
+
+            if constexpr ( is_contact<contact_model_type>::value )
+                computeForce( *contact, *particles, neigh_iter_tag{}, false );
+
+            if constexpr ( is_temperature_dependent<
+                               typename force_model_type::thermal_type>::value )
+                comm->gatherTemperature();
+
+            // Integrate - Yoshhida stage 3 update for velcoity
+            integrator->stageThreeVel( *particles );
+
+
+		/******* Stage 4 *******/
+
+            // Integrate - Yoshhida stage 4 update for displacement
+            integrator->stageFourDisplacement( *particles );
+
+            // Update ghost particles.
+            comm->gatherDisplacement();
+
+            // Compute internal forces. -- Break Bonds
             updateForce();
 
             if constexpr ( is_contact<contact_model_type>::value )
@@ -345,8 +545,9 @@ class Solver
                                typename force_model_type::thermal_type>::value )
                 comm->gatherTemperature();
 
-            // Integrate - velocity Verlet second half.
-            integrator->finalHalfStep( *particles );
+            // Integrate - Yoshhida stage 4 update for velcoity
+            integrator->stageFourVel( *particles );
+
 
             output( step );
         }
@@ -374,6 +575,26 @@ class Solver
         // Compute internal forces.
         computeForce( *force, *particles, neigh_iter_tag{} );
     }
+
+
+	void updateForceNoBreaking()
+	    {
+		// Compute and communicate weighted volume for LPS (does nothing for
+		// PMB). Only computed once without fracture.
+		/*if constexpr ( is_fracture<
+		                   typename force_model_type::fracture_type>::value )
+		{
+		    force->computeWeightedVolume( *particles, neigh_iter_tag{} );
+		    comm->gatherWeightedVolume();
+		}
+		*/
+		// Compute and communicate dilatation for LPS (does nothing for PMB).
+		force->computeDilatation( *particles, neigh_iter_tag{} );
+		comm->gatherDilatation();
+
+		// Compute internal forces.
+		computeForce( *force, *particles, neigh_iter_tag{} );
+	    }
 
     void output( const int step )
     {

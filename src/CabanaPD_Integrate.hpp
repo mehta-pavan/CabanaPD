@@ -434,7 +434,9 @@ class Yoshida
     }
 
 
-
+ double timeInit() { return 0.0; };
+    auto time() { return _timer.time(); };
+};
 
 
 } // namespace CabanaPD
