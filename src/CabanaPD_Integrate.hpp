@@ -143,6 +143,300 @@ class Integrator
     auto time() { return _timer.time(); };
 };
 
+
+
+template <class ExecutionSpace>
+class Yoshida
+{
+    using exec_space = ExecutionSpace;
+
+    double _dt, c1, c2, c3, c4, d1, d2, d3;
+    Timer _timer;
+
+  public:
+    Yoshida( double dt )
+        : _dt( dt )
+    {
+        c1 = 0.6756;
+	c2 = -0.1756;
+	c3 = -0.1756;
+	c4 = 0.6756;
+	d1 = c1*2;
+	d2 = 2*c3 - 2*c1;
+	d3 = d1;
+    }
+
+    ~Yoshida() {}
+
+// Update stage 1 displacements
+    template <class ParticlesType>
+    void stageOneDisplacement( ParticlesType& p )
+    {
+        _timer.start();
+
+        auto u = p.sliceDisplacement();  // displacement
+        auto v = p.sliceVelocity();	// velcoity
+        auto f = p.sliceForce();	// force
+        auto rho = p.sliceDensity();	// rho
+
+        auto dt = _dt;
+        auto init_func = KOKKOS_LAMBDA( const int i )
+        {
+	
+	// Update displacements for stage 1
+	u( i, 0 ) = u( i, 0 ) + c1 * v( i, 0) * dt;
+	u( i, 1 ) = u( i, 1 ) + c1 * v( i, 1) * dt;
+ 	u( i, 2 ) = u( i, 2 ) + c1 * v( i, 2) * dt;
+
+	
+        };
+        Kokkos::RangePolicy<exec_space> policy( p.frozenOffset(),
+                                                p.localOffset() );
+        Kokkos::parallel_for( "CabanaPD::Yoshida::stageOne", policy,
+                              init_func );
+
+        _timer.stop();
+    }
+
+
+//Update force via solver 
+
+
+// Update stage 1 velcoity
+    template <class ParticlesType>
+    void stageOneVel( ParticlesType& p )
+    {
+        _timer.start();
+
+        auto u = p.sliceDisplacement();  // displacement
+        auto v = p.sliceVelocity();	// velcoity
+        auto f = p.sliceForce();	// force
+        auto rho = p.sliceDensity();	// rho
+
+        auto dt = _dt;
+        auto init_func = KOKKOS_LAMBDA( const int i )
+        {
+
+	    // Update stage 1 velcoity
+            v( i, 0 ) =  v( i, 0 ) + d1 * dt * f( i, 0 ) / rho( i );
+            v( i, 1 ) =  v( i, 1 ) + d1 * dt * f( i, 1 ) / rho( i );
+            v( i, 2 ) =  v( i, 2 ) + d1 * dt * f( i, 2 ) / rho( i );
+          
+	
+        };
+        Kokkos::RangePolicy<exec_space> policy( p.frozenOffset(),
+                                                p.localOffset() );
+        Kokkos::parallel_for( "CabanaPD::Yoshida::stageOne", policy,
+                              init_func );
+
+        _timer.stop();
+    }
+
+
+
+
+
+// Update stage 2 displacements
+    template <class ParticlesType>
+    void stageTwoDisplacement( ParticlesType& p )
+    {
+        _timer.start();
+
+        auto u = p.sliceDisplacement();  // displacement
+        auto v = p.sliceVelocity();	// velcoity
+        auto f = p.sliceForce();	// force
+        auto rho = p.sliceDensity();	// rho
+
+        auto dt = _dt;
+        auto init_func = KOKKOS_LAMBDA( const int i )
+        {
+	
+	// Update displacements for stage 2
+	u( i, 0 ) = u( i, 0 ) + c2 * v( i, 0) * dt;
+	u( i, 1 ) = u( i, 1 ) + c2 * v( i, 1) * dt;
+ 	u( i, 2 ) = u( i, 2 ) + c2 * v( i, 2) * dt;
+
+	
+        };
+        Kokkos::RangePolicy<exec_space> policy( p.frozenOffset(),
+                                                p.localOffset() );
+        Kokkos::parallel_for( "CabanaPD::Yoshida::stageOne", policy,
+                              init_func );
+
+        _timer.stop();
+    }
+
+
+//Update force via solver 
+
+
+// Update stage 2 velcoity
+    template <class ParticlesType>
+    void stageTwoVel( ParticlesType& p )
+    {
+        _timer.start();
+
+        auto u = p.sliceDisplacement();  // displacement
+        auto v = p.sliceVelocity();	// velcoity
+        auto f = p.sliceForce();	// force
+        auto rho = p.sliceDensity();	// rho
+
+        auto dt = _dt;
+        auto init_func = KOKKOS_LAMBDA( const int i )
+        {
+
+	    // Update stage 2 velcoity
+            v( i, 0 ) =  v( i, 0 ) + d2 * dt * f( i, 0 ) / rho( i );
+            v( i, 1 ) =  v( i, 1 ) + d2 * dt * f( i, 1 ) / rho( i );
+            v( i, 2 ) =  v( i, 2 ) + d2 * dt * f( i, 2 ) / rho( i );
+          
+	
+        };
+        Kokkos::RangePolicy<exec_space> policy( p.frozenOffset(),
+                                                p.localOffset() );
+        Kokkos::parallel_for( "CabanaPD::Yoshida::stageOne", policy,
+                              init_func );
+
+        _timer.stop();
+    }
+
+
+
+
+// Update stage 3 displacements
+    template <class ParticlesType>
+    void stageThreeDisplacement( ParticlesType& p )
+    {
+        _timer.start();
+
+        auto u = p.sliceDisplacement();  // displacement
+        auto v = p.sliceVelocity();	// velcoity
+        auto f = p.sliceForce();	// force
+        auto rho = p.sliceDensity();	// rho
+
+        auto dt = _dt;
+        auto init_func = KOKKOS_LAMBDA( const int i )
+        {
+	
+	// Update displacements for stage 3
+	u( i, 0 ) = u( i, 0 ) + c3 * v( i, 0) * dt;
+	u( i, 1 ) = u( i, 1 ) + c3 * v( i, 1) * dt;
+ 	u( i, 2 ) = u( i, 2 ) + c3 * v( i, 2) * dt;
+
+	
+        };
+        Kokkos::RangePolicy<exec_space> policy( p.frozenOffset(),
+                                                p.localOffset() );
+        Kokkos::parallel_for( "CabanaPD::Yoshida::stageOne", policy,
+                              init_func );
+
+        _timer.stop();
+    }
+
+
+//Update force via solver 
+
+
+// Update stage 3 velcoity
+    template <class ParticlesType>
+    void stageThreeVel( ParticlesType& p )
+    {
+        _timer.start();
+
+        auto u = p.sliceDisplacement();  // displacement
+        auto v = p.sliceVelocity();	// velcoity
+        auto f = p.sliceForce();	// force
+        auto rho = p.sliceDensity();	// rho
+
+        auto dt = _dt;
+        auto init_func = KOKKOS_LAMBDA( const int i )
+        {
+
+	    // Update stage 3 velcoity
+            v( i, 0 ) =  v( i, 0 ) + d3 * dt * f( i, 0 ) / rho( i );
+            v( i, 1 ) =  v( i, 1 ) + d3 * dt * f( i, 1 ) / rho( i );
+            v( i, 2 ) =  v( i, 2 ) + d3 * dt * f( i, 2 ) / rho( i );
+          
+	
+        };
+        Kokkos::RangePolicy<exec_space> policy( p.frozenOffset(),
+                                                p.localOffset() );
+        Kokkos::parallel_for( "CabanaPD::Yoshida::stageOne", policy,
+                              init_func );
+
+        _timer.stop();
+    }
+
+
+
+// Update stage 4 displacements
+    template <class ParticlesType>
+    void stageFourDisplacement( ParticlesType& p )
+    {
+        _timer.start();
+
+        auto u = p.sliceDisplacement();  // displacement
+        auto v = p.sliceVelocity();	// velcoity
+        auto f = p.sliceForce();	// force
+        auto rho = p.sliceDensity();	// rho
+
+        auto dt = _dt;
+        auto init_func = KOKKOS_LAMBDA( const int i )
+        {
+	
+	// Update displacements for stage 4
+	u( i, 0 ) = u( i, 0 ) + c4 * v( i, 0) * dt;
+	u( i, 1 ) = u( i, 1 ) + c4 * v( i, 1) * dt;
+ 	u( i, 2 ) = u( i, 2 ) + c4 * v( i, 2) * dt;
+
+	
+        };
+        Kokkos::RangePolicy<exec_space> policy( p.frozenOffset(),
+                                                p.localOffset() );
+        Kokkos::parallel_for( "CabanaPD::Yoshida::stageOne", policy,
+                              init_func );
+
+        _timer.stop();
+    }
+
+
+//Update force via solver -- break bonds
+
+
+// Update stage 4 velcoity
+    template <class ParticlesType>
+    void stageFourVel( ParticlesType& p )
+    {
+        _timer.start();
+
+        auto u = p.sliceDisplacement();  // displacement
+        auto v = p.sliceVelocity();	// velcoity
+        auto f = p.sliceForce();	// force
+        auto rho = p.sliceDensity();	// rho
+
+        auto dt = _dt;
+        auto init_func = KOKKOS_LAMBDA( const int i )
+        {
+
+	    // Update stage 4 velcoity
+            v( i, 0 ) =  v( i, 0 );
+            v( i, 1 ) =  v( i, 1 );
+            v( i, 2 ) =  v( i, 2 );
+          
+	
+        };
+        Kokkos::RangePolicy<exec_space> policy( p.frozenOffset(),
+                                                p.localOffset() );
+        Kokkos::parallel_for( "CabanaPD::Yoshida::stageOne", policy,
+                              init_func );
+
+        _timer.stop();
+    }
+
+
+
+
+
 } // namespace CabanaPD
 
 #endif
